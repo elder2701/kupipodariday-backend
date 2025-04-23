@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindManyOptions, FindOneOptions, Repository } from 'typeorm';
 import { Wish } from './entities/wish.entity';
@@ -49,15 +45,11 @@ export class WishesService {
       );
     }
 
-    if (!wish) {
-      throw new ForbiddenException('Такого желания не существует');
-    }
-
     return await this.wishRepository.save({ ...wish, ...updateWishDto });
   }
 
   async findOne(query: FindOneOptions<Wish>): Promise<Wish> {
-    return await this.wishRepository.findOne({
+    return await this.wishRepository.findOneOrFail({
       relations: ['owner', 'offers', 'offers.user'],
       ...query,
     });
@@ -75,12 +67,6 @@ export class WishesService {
       where: { id: wishId, owner: { id: ownerId } },
     });
 
-    if (!wish) {
-      throw new BadRequestException(
-        'Желания не существует или его нельзя изменить',
-      );
-    }
-
     return await this.wishRepository.remove(wish);
   }
 
@@ -91,12 +77,6 @@ export class WishesService {
 
     if (wish.owner.id === ownerId) {
       throw new BadRequestException('Свое желание нельзя копировать');
-    }
-
-    if (!wish) {
-      throw new BadRequestException(
-        'Желания не существует или его нельзя изменить',
-      );
     }
 
     const { id, ...copiedWish } = wish;

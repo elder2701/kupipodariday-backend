@@ -1,6 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { User } from './entities/user.entity';
-import { FindManyOptions, FindOneOptions, ILike, Repository } from 'typeorm';
+import {
+  FindManyOptions,
+  FindOneOptions,
+  ILike,
+  QueryFailedError,
+  Repository,
+} from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { hashValue } from '../../common/helpers/hash';
@@ -16,26 +22,49 @@ export class UsersService {
 
   async create(createUserDto: CreateUserDto): Promise<User> {
     const { password } = createUserDto;
-    const newUser = this.usersRepository.create({
-      ...createUserDto,
-      password: await hashValue(password),
-    });
-    return await this.usersRepository.save(newUser);
+
+    try {
+      const newUser = this.usersRepository.create({
+        ...createUserDto,
+        password: await hashValue(password),
+      });
+      return await this.usersRepository.save(newUser);
+    } catch (error) {
+      if (
+        error instanceof QueryFailedError &&
+        error.driverError['code'] === '23505'
+      ) {
+        throw new BadRequestException(
+          'Пользователь с таким e-mail или именем уже существует',
+        );
+      }
+    }
   }
 
   async updateOne(userId: number, updateUserDto: UpdateUserDto): Promise<User> {
     const { password } = updateUserDto;
 
-    const user = await this.findById(userId);
-    if (password) {
-      updateUserDto.password = await hashValue(password);
-    }
-    const newUser = this.usersRepository.create({
-      ...user,
-      ...updateUserDto,
-    });
+    try {
+      const user = await this.findById(userId);
+      if (password) {
+        updateUserDto.password = await hashValue(password);
+      }
+      const newUser = this.usersRepository.create({
+        ...user,
+        ...updateUserDto,
+      });
 
-    return this.usersRepository.save(newUser);
+      return this.usersRepository.save(newUser);
+    } catch (error) {
+      if (
+        error instanceof QueryFailedError &&
+        error.driverError['code'] === '23505'
+      ) {
+        throw new BadRequestException(
+          'Пользователь с таким e-mail или именем уже существует',
+        );
+      }
+    }
   }
 
   async findById(id: number): Promise<User> {

@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -72,12 +71,6 @@ export class WishesController {
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   async getWishById(@Param('id', ParseIntPipe) id: number): Promise<Wish> {
-    const wish = await this.wishesService.findOne({ where: { id } });
-
-    if (!wish) {
-      throw new BadRequestException('Не такого желания');
-    }
-
-    return wish;
+    return await this.wishesService.findOne({ where: { id } });
   }
 }
